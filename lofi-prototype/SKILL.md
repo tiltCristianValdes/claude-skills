@@ -267,7 +267,29 @@ Add to the prototype's `<head>` tag:
 
 This enables the Figma capture toolbar in the browser and the `generate_figma_design` workflow.
 
-#### Step 3: Hand off to figma-sync
+#### Step 3: Add screen routing for programmatic capture
+
+The prototype uses in-memory JS navigation — each screen is the same URL rendered differently. To capture screens individually without manual clicking, add a `?screen=` URL param hook just before the initial `render()` call:
+
+```js
+// URL screen param for direct capture: ?screen=closeConfirm etc.
+(function(){var p=new URLSearchParams(window.location.search).get('screen');if(p)S=p;}());
+```
+
+This lets each screen be opened directly as `?screen=screenName` for capture.
+
+#### Step 4: Capture screen content only — not the device frame
+
+**Critical rule**: Always use `figmaselector=%23mc` in the capture URL to target `#mc` (the inner screen container) rather than the full page. This captures only the 393×852 app content — no dark background, no device shell border.
+
+Capture URL format:
+```
+http://localhost:5173/prototype.html?screen=SCREEN_NAME#figmacapture=ID&figmaendpoint=ENDPOINT&figmadelay=1000&figmaselector=%23mc
+```
+
+Never capture the full page — it brings in the dark dev toolbar, viewport background, and device frame chrome, which are prototype scaffolding, not design content.
+
+#### Step 5: Hand off to figma-sync
 
 From here, invoke the `figma-sync` skill. The relevant workflows:
 
