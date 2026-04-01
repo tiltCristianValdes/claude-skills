@@ -100,53 +100,88 @@ Every prototype is a single `.html` file. No build step, no frameworks, no exter
 
 Read `references/architecture.md` for the complete technical specification including the DOM helper, navigation system, rendering pipeline, animation system, modal system, responsive behavior, and gesture handling.
 
-## Input Sources & Quality Tiers
+## Input Sources & Fidelity Expectations
 
-Not all inputs produce equal results. The closer you are to the actual design, the more faithful the prototype.
+The accuracy expectation scales with the quality of the reference. A Figma file is a contract — build it faithfully. A sketch or text prompt is a starting point — use the design system and historical patterns to fill the gaps.
 
-### Tier 1: Figma Nodes (BEST — always prefer this)
+### Tier 1: Figma Nodes — Maximum fidelity
 
-Figma nodes are the gold standard because `get_design_context` returns exact values — font sizes, weights, line heights, letter spacing, padding, gaps, border radii, heights, and layout structure. A prototype built from Figma nodes will have pixel-accurate typography and spacing.
+The user is handing you the actual design. Your job is to reproduce it accurately in grayscale, not to interpret or improve it. Every spacing, font, radius, and color decision has already been made — extract it and use it.
 
 When given one or more Figma URLs:
 1. **Always call both `get_screenshot` AND `get_design_context` for every node.** Screenshots show visual intent; design context gives exact measurements. You need both.
-2. Extract every concrete value from the design context: font family, size, weight, line-height, letter-spacing, padding, gap, border-radius, width, height. Do not approximate — use the exact numbers.
-3. Map the Figma's color tokens to the shade palette for grayscale treatment:
+2. Extract every concrete value: font family, size, weight, line-height, letter-spacing, padding, gap, border-radius, width, height. Do not approximate — use the exact numbers.
+3. Map Figma color tokens to the shade palette:
    - Chartreuse/brand colors → `shade-900` (on light) or `shade-300` (on dark)
-   - Persimmon/red alert colors → `shade-300` (the containers) or `shade-200`
+   - Persimmon/red alert colors → `shade-300` (containers) or `shade-200`
    - Secondary colors (green, orange, purple category bubbles) → `shade-300`
    - Text colors map directly: `#100F0F` = shade-900, `#595954` = shade-500, etc.
-4. Pay close attention to component patterns in the design context: checkbox sizes (32×32 in Tilt DS), pill button heights (28px small, 40px medium), CTA button heights (48px, border-radius 50px), card border-radii (12px standard, 16px for larger cards).
-5. If a user provides multiple Figma node URLs, fetch them all in parallel for speed.
+4. Pay close attention to component sizes: checkbox 32×32, pill small 28px/medium 40px, CTA 48px/radius 50px, card radius 12px standard.
+5. Fetch multiple Figma URLs in parallel for speed.
 
-**Why this matters:** Without Figma node context, a prototype guesses at whether a title is 28px or 32px, whether padding is 16px or 20px, whether a button is 44px or 48px tall. These small differences compound into a prototype that "looks kinda right" vs. one that looks production-ready in grayscale.
+**The prototype should look nearly identical to the Figma reference — just stripped of color, images, and icons.**
 
-### Tier 2: Screenshot / Image
+### Tier 2: Screenshot or sketch
 
-When given a photo of a design, screenshot, or hand-drawn sketch:
-1. Identify each screen in the image
-2. Infer the flow order from arrows, numbering, or left-to-right layout
-3. Match visible typography to the closest Tilt Design System token (e.g., a large bold title → headline2: 32px/38px Black)
-4. Match visible spacing to standard Tilt values (8, 12, 16, 20, 24, 32px)
-5. Fill in realistic copy where the sketch has scribbles
-6. **If a Figma URL is available for the same design, always pull the node context too** — it resolves any ambiguity from the screenshot
+The reference has visual intent but no exact measurements. Use it to understand layout, flow order, and relative hierarchy — then fill in measurements using the Tilt Design System and, where possible, historical reference from previously built prototypes of similar screens.
 
-### Tier 3: Text Description (PRD, Notion, Linear, prompt)
+1. Identify each screen and enumerate them before building anything
+2. Infer flow order from arrows, numbering, or left-to-right layout
+3. Match visible typography to the nearest Tilt DS token (large bold title → headline2: 32px/900/38px)
+4. Match spacing to standard Tilt values (8, 12, 16, 20, 24, 32px)
+5. **Look for historical patterns first.** If this screen type has been built before (e.g. a payment confirmation, a settings list, a home tile), use that as your baseline rather than reinventing. Consistency with established patterns is more valuable than novelty.
+6. If a Figma URL is available for the same design, always pull node context too — it resolves ambiguity
 
-When given a text description of a flow:
-1. Parse the screen-by-screen description
-2. Determine screen count, dark/light theme per screen, and navigation structure
-3. Write realistic UI copy that sounds like a real fintech app — not lorem ipsum
-4. Default to Tilt DS standard values: 24px horizontal padding, 12px card radii, 48px CTAs, subtitle2 for labels, body2 for descriptions
-5. Ask clarifying questions only if truly ambiguous
+### Tier 3: Text description (PRD, Notion, Linear, prompt, sketch notes)
+
+The reference describes intent, not form. Your job is to make confident design decisions on behalf of the user using the Tilt DS and historical patterns — then build something that feels like a natural extension of the product, not a generic wireframe.
+
+1. Parse the description into a screen list before building
+2. Determine dark/light theme per screen — default to light unless the context or product area implies dark
+3. Write realistic copy that sounds like the Tilt product — not lorem ipsum, not placeholder text
+4. **Default to Tilt DS standards throughout:** 24px horizontal padding, 12px card radii, 48px CTAs, subtitle2 for section labels, body2 for descriptions, headline2/3 for page titles
+5. **Mine historical reference for similar patterns.** A "confirm action" screen, a "success state", a "list with detail rows" — if you've seen how Tilt builds these, use that pattern
+6. Ask clarifying questions only if truly ambiguous and it would change the structure significantly — don't hold up building over minor details
+
+### Deviation and exploration
+
+When the user wants to explore beyond the reference — try a different layout, test a new pattern, deviate from the established flow — they'll say so. Until then, stay close to what the reference and design system prescribe. The prototype is a tool for exploration, but a solid, accurate starting point is what enables productive exploration.
 
 ## Building the Prototype
 
-### Step 1: Gather design context
-Before writing any code:
-- If Figma URLs are provided, call `get_screenshot` + `get_design_context` for every node (in parallel)
-- Map out: how many screens, navigation order, dark vs light per screen, modals and triggers, interactive elements
-- **Declare all numeric values as constants at the top** (balances, limits, amounts). Verify the arithmetic: totals should sum correctly, balance + available = limit, payment options should be ordered smallest → largest.
+### Step 1: Gather design context — MANDATORY EXTRACTION PASS
+
+**Do not write a single line of code until this step is complete.**
+
+#### 1a. Enumerate exactly what is shown
+
+When a reference contains multiple screens (a Figma section, a screenshot with several frames, a flow overview), **list every screen you actually see before building anything.** State the screen name, its position in the flow, and what it contains. Do not invent screens that are not present. Do not add screens based on what "probably comes next." Only build what is visible in the reference, unless the user explicitly asks you to add something beyond it.
+
+If you are uncertain whether something is a screen or a component state, call `get_screenshot` on the parent node to see the full layout, then confirm before building.
+
+**Never hallucinate content.** If a label, number, or UI element is not legible or not present in the reference, use a reasonable Tilt-style placeholder and note that it was inferred — do not invent specific values or flows.
+
+#### 1b. Extract exact values for every visible screen
+
+For every Figma node provided:
+1. Call `get_design_context` AND `get_screenshot` in parallel for every node. The screenshot reveals visual intent (dark vs light, density, composition). The design context gives exact measurements.
+2. **Read the full `get_design_context` response top to bottom.** Do not skim. Every class like `px-[24px]`, `text-[14px]`, `rounded-[12px]`, `h-[48px]` is a precise measurement — extract it literally.
+3. Build an extraction table before coding. For each screen, write out:
+   - Background color (bg-white vs bg-[#f7f5ef] — these are different, do not default to white)
+   - Every font size, weight, line-height, letter-spacing in use
+   - Every padding, gap, border-radius value
+   - Component heights (pills, buttons, cards, headers)
+   - Icon/bubble sizes (24px? 40px? verify from the context — do not guess)
+4. Note the "styles contained in the design" section at the bottom of each `get_design_context` response — it lists every token in use. Cross-reference these against your extraction table.
+5. **Never approximate.** If the context says `p-[20px]`, use 20px — not 16px or 24px. If it says `text-[40px]`, use 40px — not 32px or 56px. The Figma file is the source of truth.
+
+**Why this matters:** Skimming the design context is how small errors compound — a balance at 56px instead of 40px, modal icons at 40px instead of 24px, a header background at white instead of `#F7F5EF`. Each wrong value erodes fidelity. The whole point of Figma being available is that the prototype should look nearly identical, just in grayscale.
+
+After extraction, also map out:
+- How many screens, navigation order, dark vs light theme per screen (from the screenshot — not an assumption)
+- Modals and their triggers
+- Interactive elements
+- **Declare all numeric values as constants at the top** (balances, limits, amounts). Verify arithmetic is consistent across screens.
 
 ### Step 2: Start from the reference architecture
 Read `references/architecture.md` and use its patterns. The architecture covers: DOM helper, navigation, rendering, animation, modals, responsive behavior, gestures, and the critical `render()` vs `update()` vs direct DOM distinction.
@@ -154,7 +189,7 @@ Read `references/architecture.md` and use its patterns. The architecture covers:
 ### Step 3: Build screen renderers
 Each screen gets a `renderScreenName()` function that returns a DOM element:
 - Use the `h()` DOM helper for all element creation
-- Each screen returns a `.sc` element with `.dk` or `.lt` class
+- Each screen returns a `.sc` element with `.dk` or `.lt` class — set this from the screenshot, not assumption
 - Structure: `.sh` (header) → `.ss` (scrollable body) → `.sf` (footer)
 - Modals render inside the screen that triggers them
 - **Use exact Figma values** for all typography (fontSize, fontWeight, lineHeight, letterSpacing) and spacing (padding, margin, gap, borderRadius, height)
