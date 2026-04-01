@@ -214,6 +214,24 @@ screens:
 
 ---
 
+## Mobile app prototypes — device shell
+
+For mobile app projects, consider adding an iPhone or Android device shell to the project so the browser view simulates a real device. This gives a more realistic prototype experience without affecting the Figma capture workflow.
+
+**How it works:**
+- A CSS device frame wraps the app content in the browser
+- The shell constrains the visible area to mobile dimensions (e.g. 852px height) and scrolls inside it
+- Figma captures still get the full page height — the shell is invisible to the capture
+
+**Key rules when adding a device shell:**
+- Put `overflow-y: auto` and `height: 852px` on the screen container (`.device-screen`), not on `#root`
+- Keep `#root` unconstrained — no `max-height`, no `overflow` — so captures get the full content height
+- Use `figmaselector=%23root` in capture URLs to capture just the app content, not the shell
+
+**To add a device shell:** tell Claude "add an iPhone device shell to the app" and it will set it up.
+
+---
+
 ## Common issues & fixes
 
 | Problem | Fix |
