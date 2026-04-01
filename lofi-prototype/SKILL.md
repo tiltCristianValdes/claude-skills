@@ -280,11 +280,26 @@ This lets each screen be opened directly as `?screen=screenName` for capture.
 
 #### Step 4: Capture screen content only — not the device frame
 
-**Critical rule**: Always use `figmaselector=%23mc` in the capture URL to target `#mc` (the inner screen container) rather than the full page. This captures only the 393×852 app content — no dark background, no device shell border.
+**Critical rule**: The prototype uses a desktop layout with a phone frame wrapper. On desktop the screen content is inside `#pc` (which has no fixed dimensions) and `#mc` (the mobile-layout container) is hidden. To get a clean 393×852 screen capture with no device chrome or dark background, add a `capture-mode` CSS override to the prototype and trigger it via a `?capture` URL param.
 
-Capture URL format:
+**Add to the prototype's CSS** (once, at build time):
+```css
+body.capture-mode #app { display: none !important; }
+body.capture-mode #ms { display: flex !important; flex-direction: column; position: fixed !important; top: 0; left: 0; right: 0; bottom: 0; width: 393px; height: 852px; overflow: hidden; z-index: 9999; }
 ```
-http://localhost:5173/prototype.html?screen=SCREEN_NAME#figmacapture=ID&figmaendpoint=ENDPOINT&figmadelay=1000&figmaselector=%23mc
+
+**Add to the prototype's JS init block** (just before `render()`):
+```js
+(function(){
+  var params = new URLSearchParams(window.location.search);
+  var scr = params.get('screen'); if (scr) S = scr;
+  if (params.has('capture')) document.body.classList.add('capture-mode');
+}());
+```
+
+**Capture URL format** (combines screen routing + capture mode + selector):
+```
+http://localhost:5173/prototype.html?screen=SCREEN_NAME&capture#figmacapture=ID&figmaendpoint=ENDPOINT&figmadelay=1500&figmaselector=%23mc
 ```
 
 Never capture the full page — it brings in the dark dev toolbar, viewport background, and device frame chrome, which are prototype scaffolding, not design content.
