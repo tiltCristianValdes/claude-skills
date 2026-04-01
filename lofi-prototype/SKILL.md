@@ -278,16 +278,36 @@ The prototype uses in-memory JS navigation — each screen is the same URL rende
 
 This lets each screen be opened directly as `?screen=screenName` for capture.
 
-#### Step 4: Capture screen content only — not the device frame
+#### Step 4: Capture the phone frame only — not the background
 
-**Critical rule**: Always use `figmaselector=%23pc` in the capture URL. `#pc` is the inner content container inside the phone frame — it holds the rendered app screen without the device border, device notch, rounded corners, or dark background. Do NOT modify the prototype HTML to achieve this.
-
-**Capture URL format**:
+**Capture URL format** — use `figmaselector=%23pf` to target the phone frame (`#pf` is always 393×852):
 ```
-http://localhost:5173/prototype.html?screen=SCREEN_NAME#figmacapture=ID&figmaendpoint=ENDPOINT&figmadelay=1500&figmaselector=%23pc
+http://localhost:5173/prototype.html?screen=SCREEN_NAME#figmacapture=ID&figmaendpoint=ENDPOINT&figmadelay=1500&figmaselector=%23pf
 ```
 
-Never capture the full page or `body` — that includes the dark dev toolbar, viewport background, and device frame chrome which are prototype scaffolding, not design content. Never modify the prototype HTML/CSS to add capture-specific layout overrides — that breaks the desktop viewing experience.
+Do NOT capture `body` or the full page — that includes the dark dev toolbar and viewport background. Do NOT modify the prototype HTML/CSS for capture.
+
+#### Step 5: Post-capture — enforce 393×852 and strip device chrome
+
+After each capture completes, do two things with `use_figma`:
+
+1. **Resize to 393×852** — enforce minimum frame dimensions regardless of captured content height:
+```js
+const frame = await figma.getNodeByIdAsync('NODE_ID');
+if (frame.width !== 393 || frame.height < 852) {
+  frame.resize(393, Math.max(frame.height, 852));
+}
+```
+
+2. **Strip device chrome** — remove the phone border, notch, and rounded corners by clipping the frame to its content:
+```js
+frame.clipsContent = true;
+frame.cornerRadius = 0;
+// Remove any child nodes that are the notch or border overlay
+frame.children.filter(n => n.name === 'pn' || n.name === 'border').forEach(n => n.remove());
+```
+
+Every screen frame in Figma must be exactly 393px wide and at least 852px tall. No exceptions.
 
 #### Step 5: Hand off to figma-sync
 
