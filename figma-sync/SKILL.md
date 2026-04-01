@@ -115,12 +115,13 @@ Run this when the user wants to push their current localhost app to Figma.
 
 ### The capture toolbar
 
-Because the capture script is injected into `index.html`, a **Figma capture toolbar** automatically appears in the browser while the dev server is running. Tell users about it — they can use it without any commands:
+The capture toolbar appears in the browser **only when the capture URL is open** — the one with `#figmacapture=<ID>&figmaendpoint=<ENDPOINT>` in the hash. It does not appear automatically just from the script being loaded.
+
+When a capture is initiated (via `generate_figma_design`), Claude opens the capture URL in the browser. During that window the toolbar is visible and the user can:
 
 - **Capture page** — sends the full current screen to Figma
 - **Select element** — click any element on the page to send just that component to Figma
-- **Navigate + recapture** — click links to go to another route, then hit capture again; the toolbar auto-generates a new capture ID each time
-- **No command needed** — users can capture directly from the browser without saying "capture to figma"
+- **Navigate + recapture** — click links to go to another route, then hit capture again
 
 To enable element selection mode programmatically, add `&figmaselector=*` to the capture URL.
 
