@@ -267,6 +267,24 @@ Even after Figma sync is set up, the prototype remains a single self-contained H
 
 ## Checklist Before Delivering
 
+### Syntax Validation (run this first — a syntax error produces a silent blank screen)
+
+After writing the HTML file, extract and validate the JavaScript before opening it:
+
+```bash
+python3 -c "
+import re, sys
+content = open('prototype.html').read()
+match = re.search(r'<script>(.*?)</script>', content, re.DOTALL)
+open('/tmp/_proto_check.js', 'w').write(match.group(1))
+"
+node --check /tmp/_proto_check.js && echo "✓ JS valid" || echo "✗ Syntax error — fix before delivering"
+```
+
+Replace `prototype.html` with the actual filename. If `node --check` fails, read the error line number, fix the issue, and re-run before proceeding.
+
+- [ ] `node --check` passes with no errors
+
 ### Layout & Rendering
 - [ ] Every screen renders identically in the phone frame (desktop) and fullscreen (mobile)
 - [ ] Status bar with inline SVG icons (cellular, wifi, battery) renders at the top of every screen
