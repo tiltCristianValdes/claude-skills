@@ -144,24 +144,36 @@ Output:
 
 ---
 
+## Sample Asset: CC Cancellation
+
+The `samples/cc-cancellation/` folder contains a ready-to-use example:
+
+- `cc-cancellation-flow.png` — hi-fi design showing all 9 screens and the decision logic between them
+- `BRIEF.md` — full screen inventory, navigation graph, and three copy-paste prompts to try the flow
+
+This covers the full CC account cancellation flow including four edge cases (outstanding balance, subscription confirmation, pending transaction, credit balance). Use it to try any of the three options below.
+
+---
+
 ## Try It: Chain Option B into Option C
 
-The fastest way to see both skills in action is to run them back to back.
+The fastest way to see both skills in action is to run them back to back using the CC Cancellation sample.
 
-**Step 1** — Generate a lofi with Option B. Pick any flow you're working on, or use this example:
+**Step 1** — Generate a lofi with Option B:
 
 ```
-Build a lofi prototype for a credit card payment flow.
-Screens: Payment amount selector, confirmation, success.
-Dark screens throughout. Single primary CTA on each screen.
+Build a lofi prototype for the CC Cancellation flow.
+Reference: samples/cc-cancellation/BRIEF.md
+9 screens. Light theme throughout. Include all four edge case paths.
 ```
 
-Claude will output a file like `payment-flow-prototype.html`. Open it in a browser to click through it.
+Claude will output a file like `cc-cancellation-prototype.html`. Open it in a browser to click through it.
 
 **Step 2** — Graduate it to hi-fi with Option C:
 
 ```
-Graduate the lo-fi prototype at ~/Desktop/payment-flow-prototype.html to hi-fi.
+Graduate the lo-fi prototype at ~/Desktop/cc-cancellation-prototype.html to hi-fi.
+Visual reference: samples/cc-cancellation/cc-cancellation-flow.png
 Use tilt-app.html at ~/Desktop/tilt-app.html as the brand reference.
 ```
 
