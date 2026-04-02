@@ -127,6 +127,17 @@ At this checkpoint, also ask two logistical questions if not already answered:
    `save_issue` to create one titled "Prototype: [feature name]" linked to the parent issue.
    Note the sub-issue ID in your state.
 
+#### Route decision: lofi or direct to hifi?
+
+After the brief is confirmed, ask one more question before proceeding:
+
+*"Does this feature already have approved Figma designs, final copy, and a defined interaction model — or do we need to figure those out through iteration?"*
+
+- **If yes, everything is defined** → offer to skip lofi and go direct to hifi. Check the 5 prerequisites from the hifi-prototype skill: screen list complete, navigation defined, copy final, visual design exists, no open UX questions. If all 5 are met, jump to Phase 4 and invoke hifi-prototype in Mode 2.
+- **If no, still figuring things out** → proceed to Phase 2 (Build Lo-Fi). This is the default for most features.
+
+Never skip lofi unless the user explicitly confirms all 5 prerequisites are true.
+
 ---
 
 ### Phase 2: BUILD LO-FI
@@ -163,6 +174,8 @@ Let it run. Your job is to provide complete context, not to direct the implement
 After the prototype is generated, the user will want to refine. Keep invoking
 `lofi-prototype` with updated context for each revision. The back-and-forth is the point —
 there's no formal checkpoint within the loop.
+
+**Scope guard:** If feedback requests screens, flows, or interactions not in the confirmed brief, flag it before incorporating: *"That sounds like a new screen not in the original brief — want to add it to scope, or keep this prototype focused on what we confirmed?"* Never silently expand scope.
 
 Watch for signals the user is satisfied:
 - "This looks good"
@@ -230,7 +243,11 @@ path. See "Figma graduation" below.
 
 **Option C: Move to hi-fi directly** → invoke the `hifi-prototype` skill. This produces the full engineer-ready package: polished HTML + SwiftUI (iOS) + Jetpack Compose (Android) + design tokens + QA report + handoff document.
 
+**Option D: Kill the feature** → Close out cleanly. Use `save_comment` to add a final Linear comment summarizing what was learned. Set sub-issue status to "Cancelled". Post a brief Slack note if the team was involved. No further phases needed.
+
 #### Figma graduation (Option B)
+
+**Which Figma path?** Simple rule: almost always use the static HTML capture path (invoke `lofi-prototype` with the graduation trigger below). Only use the React/Vite SETUP path if the user explicitly says they want a React app as the hi-fi prototype harness — that's rare.
 
 The lofi-prototype skill has a built-in Figma sync workflow for static HTML files.
 Invoke it by calling `lofi-prototype` with the graduation trigger:
@@ -275,6 +292,7 @@ Then convert the lo-fi prototype screens at [file path] into React components.
 
 ```
 Skill(skill="hifi-prototype", args="""
+Mode: lofi-graduation (Mode 1) — structure is locked, apply aesthetic layer only.
 Graduate the lo-fi prototype at [prototype file path].
 Feature: [feature name]
 Figma reference: [URL if available, otherwise omit]
@@ -312,6 +330,8 @@ summarizing the journey: phases completed, iteration count, feedback incorporate
 ---
 
 ## State Tracking
+
+**Reference this at every phase transition.** When moving between phases, briefly surface current state to the user: *"We're entering Phase 3 — prototype is at [path], iteration count: 2, Slack channel: #design-feedback."* This keeps long sessions grounded and helps when resuming after a break.
 
 Maintain awareness of these throughout the conversation. You don't need them all upfront —
 collect as you go.
