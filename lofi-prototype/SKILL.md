@@ -265,51 +265,165 @@ Add to the prototype's `<head>` tag:
 <script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async></script>
 ```
 
-This enables the Figma capture toolbar in the browser and the `generate_figma_design` workflow.
+#### Step 3: Add URL param hooks to the prototype JS
 
-#### Step 3: Add screen routing for programmatic capture
-
-The prototype uses in-memory JS navigation — each screen is the same URL rendered differently. To capture screens individually without manual clicking, add a `?screen=` URL param hook just before the initial `render()` call:
+Add both hooks just before the initial `render()` call at the bottom of the `<script>` block:
 
 ```js
-// URL screen param for direct capture: ?screen=closeConfirm etc.
+// Hook 1 — Direct screen navigation for programmatic capture: ?screen=screenName
 (function(){var p=new URLSearchParams(window.location.search).get('screen');if(p)S=p;}());
+
+// Hook 2 — Clean capture mode: ?capture=true strips device chrome for Figma import.
+// ONLY active when capture=true is in the URL — normal web view is NEVER affected.
+(function(){
+  if(new URLSearchParams(window.location.search).get('capture')!=='true')return;
+  document.body.style.background='transparent';
+  var pf=document.getElementById('pf');
+  if(pf){pf.style.borderRadius='0';pf.style.border='none';pf.style.boxShadow='none';}
+  var pn=document.getElementById('pn');
+  if(pn)pn.parentNode.removeChild(pn);
+}());
 ```
 
-This lets each screen be opened directly as `?screen=screenName` for capture.
+**Why `?capture=true` matters:** The device frame has `border-radius:48px`, `border:8px solid #444`, and `box-shadow`. Without stripping these before capture, the Figma import inherits phone-shaped clipping, an 8px content offset (border box-sizing), and inner frames narrowed to 377px. Stripping them via URL param before the browser renders means the capture is clean — no post-processing needed for those artifacts. The normal web view is always unchanged.
 
-#### Step 4: Capture the phone frame only — not the background
+#### Step 4: Capture full-page — no element selector
 
-**Capture URL format** — use `figmaselector=%23pf` to target the phone frame (`#pf` is always 393×852):
+**Critical:** Do NOT use `figmaselector` to target `#pf` or any element. Element-targeted captures silently fail (report "completed" but the frame can't be found in Figma). Always capture the full page.
+
+**Capture URL format:**
 ```
-http://localhost:5173/prototype.html?screen=SCREEN_NAME#figmacapture=ID&figmaendpoint=ENDPOINT&figmadelay=1500&figmaselector=%23pf
+http://localhost:5173/prototype.html?screen=SCREEN_NAME&capture=true#figmacapture=ID&figmaendpoint=ENDPOINT&figmadelay=1500
 ```
 
-Do NOT capture `body` or the full page — that includes the dark dev toolbar and viewport background. Do NOT modify the prototype HTML/CSS for capture.
+Capture one screen at a time — never in parallel.
 
-#### Step 5: Post-capture — enforce 393×852 and strip device chrome
+#### Step 5: Post-capture — extract app frame in Figma
 
-After each capture completes, do two things with `use_figma`:
+After each capture completes, run `use_figma` to extract the inner 393×852 app frame from the full-page capture tree and clean it up. Because `?capture=true` already stripped the device chrome before capture, post-processing is minimal.
 
-1. **Resize to 393×852** — enforce minimum frame dimensions regardless of captured content height:
 ```js
-const frame = await figma.getNodeByIdAsync('NODE_ID');
-if (frame.width !== 393 || frame.height < 852) {
-  frame.resize(393, Math.max(frame.height, 852));
+async function find393x852(node) {
+  if (!node) return null;
+  const w = Math.round(node.width), h = Math.round(node.height);
+  if (w === 393 && h >= 852) return node;
+  if ('children' in node) {
+    for (const c of node.children) { const r = await find393x852(c); if (r) return r; }
+  }
+  return null;
 }
+
+function disableClipping(node) {
+  if ('clipsContent' in node) node.clipsContent = false;
+  if ('effects' in node) node.effects = [];
+  if ('strokes' in node) node.strokes = [];
+  if ('children' in node) for (const c of node.children) disableClipping(c);
+}
+
+function maxContentHeight(node) {
+  let maxY = 0;
+  function walk(n, offsetY) {
+    const bottom = offsetY + n.height;
+    if (bottom > maxY) maxY = bottom;
+    if ('children' in n) for (const c of n.children) walk(c, offsetY + c.y);
+  }
+  walk(node, 0);
+  return maxY;
+}
+
+function hasSolidFill(node) {
+  return 'fills' in node && Array.isArray(node.fills) && node.fills.length > 0 && node.fills[0].type === 'SOLID';
+}
+
+function restoreRadius(node) {
+  const w = Math.round(node.width), h = Math.round(node.height), n = node.name;
+  // CTA buttons (48px tall) → 50px pill radius
+  if (n === 'Button' && h === 48) { node.cornerRadius = 50; return; }
+  // Action pill buttons (40px tall, ANY width) → 24px
+  // This covers: square icon buttons (40×40), Pay pills (~53px wide), Card pills (~63px wide), etc.
+  if (n === 'Button' && h === 40) { node.cornerRadius = 24; return; }
+  // Small detail pills (28px tall) → 24px
+  if (n === 'Button' && h === 28) { node.cornerRadius = 24; return; }
+  // Small ••• square button (32×32) → 24px
+  if (n === 'Button' && h === 32 && w === 32) { node.cornerRadius = 24; return; }
+  // Home indicator pill (134×5) → 50px
+  if (n === 'Container' && w === 134 && h === 5) { node.cornerRadius = 50; return; }
+  // Icon circle placeholders (40×40) → 99px
+  if (n === 'Container' && h === 40 && w === 40) { node.cornerRadius = 99; return; }
+  // Small icon circles
+  if (n === 'Container' && h === 24 && w === 24) { node.cornerRadius = 12; return; }
+  if (n === 'Container' && h === 32 && w === 32) { node.cornerRadius = 16; return; }
+  // Illustration placeholder (164×164) → 24px
+  if (w === 164 && h === 164) { node.cornerRadius = 24; return; }
+  // Cards: ONLY if the container has a solid fill AND is narrower than full-width.
+  // CRITICAL guard: full-width containers (≥390px) are ALWAYS section/layout wrappers — NEVER cards.
+  // Status bar, header, footer are all 393px wide with fills. Without the w < 390 check they match
+  // the card rule, rounding their corners and making the outer frame look like it has a radius.
+  // Cards in Tilt DS are always padded inward (~329px wide), never full-width.
+  if (n === 'Container' && hasSolidFill(node) && w < 390) {
+    if (h >= 56 && h <= 200) { node.cornerRadius = 12; return; }
+    if (w >= 150 && w <= 180 && h >= 150 && h <= 260) { node.cornerRadius = 20; return; } // leap/promo cards
+  }
+  // Everything else (transparent wrappers, text containers, full-width sections) → zero
+  node.cornerRadius = 0;
+}
+
+function walkAndRestore(node, depth = 0) {
+  if (depth > 0 && 'cornerRadius' in node && node.cornerRadius !== figma.mixed) restoreRadius(node);
+  if ('children' in node) for (const c of node.children) walkAndRestore(c, depth + 1);
+}
+
+// --- Run for each captured screen ---
+const page = figma.currentPage;
+const outer = await figma.getNodeByIdAsync('CAPTURE_NODE_ID');
+if (!outer) return { error: 'outer not found' };
+
+const appFrame = await find393x852(outer);
+if (!appFrame) return { error: 'no 393px frame found', w: outer.width, h: outer.height };
+
+page.appendChild(appFrame);
+appFrame.cornerRadius = 0;
+appFrame.effects = [];
+appFrame.strokes = [];
+appFrame.name = 'screenName';
+disableClipping(appFrame);
+
+const h = maxContentHeight(appFrame);
+appFrame.resize(393, Math.max(h, 852));
+if (appFrame.y < 0) appFrame.y = 0;
+walkAndRestore(appFrame);
+outer.remove();
+
+return { nodeId: appFrame.id, name: appFrame.name, w: Math.round(appFrame.width), h: Math.round(appFrame.height) };
 ```
 
-2. **Strip device chrome** — remove the phone border, notch, and rounded corners by clipping the frame to its content:
+**Key rules:**
+- Zero `cornerRadius` ONLY on the outer `appFrame` — never recursively zero on all children
+- `walkAndRestore` starts at depth=1 so the outer frame itself is never passed through `restoreRadius`
+- `disableClipping()` must be recursive — captured inner frames all inherit `clipsContent: true`
+- `hasSolidFill()` + `w < 390` guard together are what correctly distinguish cards from section wrappers
+- `?capture=true` eliminates the need for `fixWidths`, `fixOffsets`, and notch removal entirely
+- Minimum frame height is 852px even if content is shorter
+- If `appFrame.y` is negative after promotion, snap to 0
+
+#### Step 6: Organize frames in Figma
+
+After capturing all screens, arrange them into a clean horizontal row with 48px spacing:
+
 ```js
-frame.clipsContent = true;
-frame.cornerRadius = 0;
-// Remove any child nodes that are the notch or border overlay
-frame.children.filter(n => n.name === 'pn' || n.name === 'border').forEach(n => n.remove());
+const screenIds = ['nodeId1', 'nodeId2', 'nodeId3']; // in flow order
+let xCursor = 0;
+for (const id of screenIds) {
+  const frame = await figma.getNodeByIdAsync(id);
+  if (!frame) continue;
+  frame.x = xCursor;
+  frame.y = 0;
+  xCursor += Math.round(frame.width) + 48;
+}
+return { organized: screenIds.length };
 ```
 
-Every screen frame in Figma must be exactly 393px wide and at least 852px tall. No exceptions.
-
-#### Step 5: Hand off to figma-sync
+#### Step 7: Hand off to figma-sync
 
 From here, invoke the `figma-sync` skill. The relevant workflows:
 

@@ -228,7 +228,7 @@ the Linear sub-issue with a comment noting the new iteration round.
 **Option B: Move to Figma** → graduate the prototype to Figma using the lo-fi-to-Figma
 path. See "Figma graduation" below.
 
-**Option C: Move to hi-fi directly** → proceed to Phase 4 (handoff package, no Figma step).
+**Option C: Move to hi-fi directly** → invoke the `hifi-prototype` skill. This produces the full engineer-ready package: polished HTML + SwiftUI (iOS) + Jetpack Compose (Android) + design tokens + QA report + handoff document.
 
 #### Figma graduation (Option B)
 
@@ -269,31 +269,45 @@ Then convert the lo-fi prototype screens at [file path] into React components.
 
 ### Phase 4: HI-FI HANDOFF
 
-**Goal**: Package everything for the transition from lo-fi to hi-fi development.
+**Goal**: Graduate the validated lo-fi prototype into a full engineer-ready package.
 
-> **Note**: The `build-hi-fi-prototype` skill is not yet built. This phase is a structured
-> handoff to engineering until that skill exists.
+#### Invoke the hifi-prototype skill
 
-#### What to produce:
+```
+Skill(skill="hifi-prototype", args="""
+Graduate the lo-fi prototype at [prototype file path].
+Feature: [feature name]
+Figma reference: [URL if available, otherwise omit]
+Screens in scope: [list all screen IDs]
+Brief: [paste the Phase 1 brief]
+Feedback incorporated: [summary of what changed from Phase 3]
+""")
+```
 
-1. **Handoff document** (post as a Slack message + Linear comment):
-   - Link to the final prototype HTML file
-   - The original brief from Phase 1
-   - Key decisions made during iteration (what changed and why)
-   - Feedback received and how it was addressed
-   - Any Figma file links (if the Figma path was used)
-   - Open questions or known gaps the hi-fi team should resolve
+The hifi-prototype skill will handle:
+- Polishing the HTML (full color, real icons, complete interaction states)
+- Extracting design tokens to `design-tokens.json`
+- Generating SwiftUI screens + components (iOS 16+, SwiftUI)
+- Generating Jetpack Compose screens + components (Android, Material 3)
+- Running the QA pass (contrast, navigation completeness, arithmetic, interaction states)
+- Assembling `HANDOFF.md` and `QA-report.md`
 
-2. **Linear update**: Change sub-issue status to "Ready for Development". Use `save_comment`
-   to add the handoff summary. Tag engineers if the user specifies who.
+The output is a folder at `~/Desktop/[feature-name]-hifi/` containing the complete package.
 
-3. **Slack notification**: Post to the same channel used for feedback, noting the prototype
-   is ready for hi-fi development.
+#### After the package is ready
 
-#### >>> CHECKPOINT 4: "Handoff package is ready. Should I share it broadly, or is there anyone specific to notify?"
+1. **Linear update**: Change sub-issue status to "Ready for Development". Use `save_comment`
+   to add the handoff summary and link to the output folder. Tag engineers if specified.
+
+2. **Slack notification**: Post to the same channel used for feedback. Include:
+   - What the package contains
+   - Where to find it
+   - Any open questions from the QA report
+
+#### >>> CHECKPOINT 4: "Hi-fi package is ready. Should I share it broadly, or is there anyone specific to notify?"
 
 After confirmation, post final notifications and close out. Add a final Linear comment
-summarizing the journey: phases completed, iteration count, feedback incorporated, status.
+summarizing the journey: phases completed, iteration count, feedback incorporated, QA status.
 
 ---
 
